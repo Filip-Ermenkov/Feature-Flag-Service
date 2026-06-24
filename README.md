@@ -21,6 +21,22 @@ mvn package
 java -jar target/feature-flag-service-0.0.1-SNAPSHOT.jar
 ```
 
+## Docker
+
+```bash
+# Build the image (requires the JAR to be built first)
+mvn package -DskipTests
+docker build -t feature-flag-service .
+
+# Run — flags persist in a named volume across container restarts
+docker run -p 8080:8080 -v featureflags-data:/application/data feature-flag-service
+
+# Run without persistence (ephemeral — flags are lost on container stop)
+docker run -p 8080:8080 feature-flag-service
+```
+
+The image uses a multi-stage build: a JDK builder stage extracts the Spring Boot layered JAR, and a JRE-only runtime stage assembles the final image (~350 MB). H2 flag data is stored under `/application/data` — mount a named volume there for persistence.
+
 ## Tech Stack
 
 | Concern | Choice |
@@ -99,7 +115,7 @@ curl -s -o /dev/null -w "%{http_code}" -X DELETE http://localhost:8080/flags/1
 - [x] DTOs (Java records: `CreateFlagRequest`, `UpdateFlagRequest`, `FlagResponse`, `EvaluateResponse`) and domain exceptions (`FlagNotFoundException`, `DuplicateFlagNameException`) with RFC 9457 `ProblemDetail` error responses via `GlobalExceptionHandler` (`@WebMvcTest` slice tests)
 - [x] Service layer (`FeatureFlagService` interface + `FeatureFlagServiceImpl`) with `@Transactional(readOnly=true)` class-level default, write-method overrides, and full Mockito unit test coverage (15 tests across create/findAll/findById/update/delete/evaluate)
 - [x] REST controller (`FeatureFlagController`) — all 6 endpoints with `@WebMvcTest` slice tests using Spring Framework 7's `MockMvcTester` (AssertJ-based); Mockito self-attaching agent configured in `maven-surefire-plugin`
-- [ ] Dockerfile (multi-stage)
+- [x] Dockerfile — multi-stage (JDK builder + JRE runtime), Spring Boot `jarmode=tools` layer extraction, non-root user, `VOLUME` for H2 persistence, container-aware JVM flags
 - [ ] GitHub Actions CI
 
 ## Future Improvements

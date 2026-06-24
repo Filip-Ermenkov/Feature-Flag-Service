@@ -109,7 +109,7 @@ H2 in file mode (`jdbc:h2:file:./data/featureflags`) provides durable storage wi
 
 ## Dockerfile Strategy
 
-Multi-stage build: stage 1 uses the full Maven + JDK image to compile and package; stage 2 copies only the JAR into a slim JRE 21 Alpine image. This keeps the final image small and free of build tools.
+Two-stage build. Stage 1 (`eclipse-temurin:21-jdk-noble`) receives the pre-built fat JAR and uses Spring Boot's `jarmode=tools` to split it into four ordered layers: `dependencies`, `spring-boot-loader`, `snapshot-dependencies`, `application`. Stage 2 (`eclipse-temurin:21-jre-noble`) copies those layers individually, so Docker can cache the large dependency layer and only re-push the tiny application layer on rebuilds. The runtime image runs as a non-root system user. H2 data is stored under `/application/data`; mount a named volume there for persistence across container restarts.
 
 ---
 
