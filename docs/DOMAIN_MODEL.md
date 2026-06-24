@@ -108,3 +108,46 @@ Bean Validation failures (`@Valid` on a request body) are mapped to `422 Unproce
 - Missing required field (`name`) → 422 with `errors[0].field = "name"`
 - Blank `name` field → 422
 - Missing `enabled` field → 422 with entry for `enabled` in `errors`
+
+---
+
+## Service layer (`com.example.featureflags.service`)
+
+### Interface: `FeatureFlagService`
+
+Defines the business contract consumed by the controller layer. Having a separate interface decouples callers from the implementation, making `@WebMvcTest` slices easy to write (the service is mocked via the interface) and the implementation swappable.
+
+| Method | Returns | Throws |
+|---|---|---|
+| `create(CreateFlagRequest)` | `FlagResponse` | `DuplicateFlagNameException` |
+| `findAll()` | `List<FlagResponse>` | — |
+| `findById(Long id)` | `FlagResponse` | `FlagNotFoundException` |
+| `update(Long id, UpdateFlagRequest)` | `FlagResponse` | `FlagNotFoundException`, `DuplicateFlagNameException` |
+| `delete(Long id)` | `void` | `FlagNotFoundException` |
+| `evaluate(String name)` | `EvaluateResponse` | `FlagNotFoundException` |
+
+### Implementation: `FeatureFlagServiceImpl`
+
+Annotated `@Service`. Transaction strategy:
+
+- **Class level** `@Transactional(readOnly = true)` — default for every method; Hibernate skips dirty-checking and the JDBC driver may apply read-only optimisations.
+- **Write methods** (`create`, `update`, `delete`) override with plain `@Transactional`, which opens a read-write transaction.
+
+The annotation is placed on the implementation class (not the interface) so that Spring's CGLIB proxy intercepts calls reliably regardless of injection-point type.
+
+**PATCH semantics** (`update`): a `null` field in `UpdateFlagRequest` means "leave this field unchanged". Name-change duplicate check is skipped if the submitted name is identical to the current name.
+
+### Test coverage
+
+`FeatureFlagServiceTest` uses `@ExtendWith(MockitoExtension.class)` — no Spring context, no database. The repository is mocked with `@Mock`; `@InjectMocks` wires it into `FeatureFlagServiceImpl`. `ReflectionTestUtils.setField` sets the entity `id` (which is otherwise JPA-managed and has no public setter).
+
+15 tests across 6 `@Nested` groups:
+
+| Group | Scenarios |
+|---|---|
+| `create()` | success; duplicate name → exception, `save` never called |
+| `findAll()` | returns all; returns empty list |
+| `findById()` | found; not found → exception |
+| `update()` | partial fields (PATCH); rename success; same name → no duplicate check; rename to taken name → exception; id not found → exception |
+| `delete()` | success; id not found → exception, `deleteById` never called |
+| `evaluate()` | found; not found → exception |

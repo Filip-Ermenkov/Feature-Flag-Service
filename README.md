@@ -71,9 +71,8 @@ Once running, the full interactive API reference is available at:
 - [x] Application context smoke test passes
 - [x] Domain model (`FeatureFlag` entity + `FeatureFlagRepository` with `@DataJpaTest` slice tests)
 - [x] DTOs (Java records: `CreateFlagRequest`, `UpdateFlagRequest`, `FlagResponse`, `EvaluateResponse`) and domain exceptions (`FlagNotFoundException`, `DuplicateFlagNameException`) with RFC 9457 `ProblemDetail` error responses via `GlobalExceptionHandler` (`@WebMvcTest` slice tests)
-- [ ] Service layer
-- [ ] REST controller (all 6 endpoints)
-- [ ] Automated tests (service unit tests + `@WebMvcTest` slice tests)
+- [x] Service layer (`FeatureFlagService` interface + `FeatureFlagServiceImpl`) with `@Transactional(readOnly=true)` class-level default, write-method overrides, and full Mockito unit test coverage (15 tests across create/findAll/findById/update/delete/evaluate)
+- [ ] REST controller (all 6 endpoints) + `@WebMvcTest` slice tests
 - [ ] Dockerfile (multi-stage)
 - [ ] GitHub Actions CI
 
