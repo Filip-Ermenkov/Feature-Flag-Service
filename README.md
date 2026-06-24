@@ -47,20 +47,46 @@ java -jar target/feature-flag-service-0.0.1-SNAPSHOT.jar
 
 ## API Reference
 
-> **Endpoints are not yet implemented.** This section will be populated as development progresses.
-
-| Method | Path | Status | Description |
+| Method | Path | Success | Description |
 |---|---|---|---|
-| `POST` | `/flags` | 🔜 | Create a flag |
-| `GET` | `/flags` | 🔜 | List all flags |
-| `GET` | `/flags/{id}` | 🔜 | Get a flag by ID |
-| `PATCH` | `/flags/{id}` | 🔜 | Partially update a flag |
-| `DELETE` | `/flags/{id}` | 🔜 | Delete a flag |
-| `GET` | `/flags/{name}/evaluate` | 🔜 | Evaluate a flag by name |
+| `POST` | `/flags` | 201 + Location | Create a flag |
+| `GET` | `/flags` | 200 | List all flags |
+| `GET` | `/flags/{id}` | 200 | Get a flag by ID |
+| `PATCH` | `/flags/{id}` | 200 | Partially update a flag (only supplied fields mutated) |
+| `DELETE` | `/flags/{id}` | 204 | Delete a flag |
+| `GET` | `/flags/{name}/evaluate` | 200 | Evaluate a flag by name |
+
+Error responses use RFC 9457 `ProblemDetail` — 404 for unknown IDs/names, 409 for duplicate names, 422 for validation failures.
 
 Once running, the full interactive API reference is available at:
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`
+
+### curl Examples
+
+```bash
+# Create a flag
+curl -s -X POST http://localhost:8080/flags \
+  -H "Content-Type: application/json" \
+  -d '{"name":"dark-mode","description":"Enable dark mode UI","enabled":false}' | jq
+
+# List all flags
+curl -s http://localhost:8080/flags | jq
+
+# Get a flag by ID
+curl -s http://localhost:8080/flags/1 | jq
+
+# Partially update a flag (toggle enabled, change description)
+curl -s -X PATCH http://localhost:8080/flags/1 \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true,"description":"Updated description"}' | jq
+
+# Evaluate a flag by name (lightweight — returns only name + enabled)
+curl -s http://localhost:8080/flags/dark-mode/evaluate | jq
+
+# Delete a flag
+curl -s -o /dev/null -w "%{http_code}" -X DELETE http://localhost:8080/flags/1
+```
 
 ## Current State
 
@@ -72,7 +98,7 @@ Once running, the full interactive API reference is available at:
 - [x] Domain model (`FeatureFlag` entity + `FeatureFlagRepository` with `@DataJpaTest` slice tests)
 - [x] DTOs (Java records: `CreateFlagRequest`, `UpdateFlagRequest`, `FlagResponse`, `EvaluateResponse`) and domain exceptions (`FlagNotFoundException`, `DuplicateFlagNameException`) with RFC 9457 `ProblemDetail` error responses via `GlobalExceptionHandler` (`@WebMvcTest` slice tests)
 - [x] Service layer (`FeatureFlagService` interface + `FeatureFlagServiceImpl`) with `@Transactional(readOnly=true)` class-level default, write-method overrides, and full Mockito unit test coverage (15 tests across create/findAll/findById/update/delete/evaluate)
-- [ ] REST controller (all 6 endpoints) + `@WebMvcTest` slice tests
+- [x] REST controller (`FeatureFlagController`) — all 6 endpoints with `@WebMvcTest` slice tests using Spring Framework 7's `MockMvcTester` (AssertJ-based); Mockito self-attaching agent configured in `maven-surefire-plugin`
 - [ ] Dockerfile (multi-stage)
 - [ ] GitHub Actions CI
 

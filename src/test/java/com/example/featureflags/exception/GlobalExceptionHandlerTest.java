@@ -1,9 +1,11 @@
 package com.example.featureflags.exception;
 
 import com.example.featureflags.dto.CreateFlagRequest;
+import com.example.featureflags.service.FeatureFlagService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +27,9 @@ class GlobalExceptionHandlerTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @MockitoBean
+    FeatureFlagService service;
 
     @RestController
     static class TestController {

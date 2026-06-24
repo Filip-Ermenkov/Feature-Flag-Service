@@ -109,6 +109,8 @@ Bean Validation failures (`@Valid` on a request body) are mapped to `422 Unproce
 - Blank `name` field → 422
 - Missing `enabled` field → 422 with entry for `enabled` in `errors`
 
+**`@MockitoBean FeatureFlagService` required** — the test uses bare `@WebMvcTest` (no controller class specified), so Spring scans and loads all `@RestController` beans in the package, including `FeatureFlagController`. That controller requires a `FeatureFlagService` bean; without a mock, the application context fails to start. The `@MockitoBean` satisfies the dependency without involving the service's behaviour in these tests.
+
 ---
 
 ## Service layer (`com.example.featureflags.service`)
@@ -151,3 +153,52 @@ The annotation is placed on the implementation class (not the interface) so that
 | `update()` | partial fields (PATCH); rename success; same name → no duplicate check; rename to taken name → exception; id not found → exception |
 | `delete()` | success; id not found → exception, `deleteById` never called |
 | `evaluate()` | found; not found → exception |
+
+---
+
+## Controller layer (`com.example.featureflags.controller`)
+
+### `FeatureFlagController`
+
+`@RestController @RequestMapping("/flags")`. Handles HTTP concerns only — deserialises the request body, calls the service, serialises the response, and returns the correct status code. No business logic lives here.
+
+| Method | Path | Handler | Success body | Notes |
+|---|---|---|---|---|
+| `POST` | `/flags` | `create` | `FlagResponse` | 201; `Location: /flags/{id}` header set via `ServletUriComponentsBuilder` |
+| `GET` | `/flags` | `findAll` | `List<FlagResponse>` | 200; always a JSON array (empty if none) |
+| `GET` | `/flags/{id}` | `findById` | `FlagResponse` | 200 |
+| `PATCH` | `/flags/{id}` | `update` | `FlagResponse` | 200; delegates PATCH semantics to service |
+| `DELETE` | `/flags/{id}` | `delete` | — | 204 No Content |
+| `GET` | `/flags/{name}/evaluate` | `evaluate` | `EvaluateResponse` | 200; lookup by name, not id |
+
+**Location header** — on `POST /flags`, the response carries a `Location` header pointing to the newly created resource (`/flags/{id}`). This follows RFC 7231 §6.3.2, which states that a 201 response *should* include a `Location` field.
+
+**Bean Validation** — `@Valid` is applied to request bodies on `POST` and `PATCH`. Constraint violations trigger Spring's `MethodArgumentNotValidException`, which `GlobalExceptionHandler` maps to `422 Unprocessable Entity` with a field-level `errors` array.
+
+**Dependency injection** — the constructor accepts `FeatureFlagService` (interface). This makes the controller testable with any `@MockitoBean` substitute in `@WebMvcTest` slices without loading the full application context.
+
+### Test coverage
+
+`FeatureFlagControllerTest` is a `@WebMvcTest(FeatureFlagController.class)` slice. It uses Spring Framework 7's `MockMvcTester` — an AssertJ-based wrapper around `MockMvc` introduced in Spring Framework 6.2 that eliminates checked exceptions and static-import noise. `MockMvcTester` is auto-configured by `@WebMvcTest` when AssertJ is on the classpath (it is, via `spring-boot-starter-test`).
+
+`@MockitoBean FeatureFlagService service` provides a Mockito mock of the service interface. The `GlobalExceptionHandler` is picked up automatically because `@WebMvcTest` loads all `@RestControllerAdvice` beans.
+
+15 tests across 6 `@Nested` groups:
+
+| Group | Scenarios |
+|---|---|
+| `POST /flags` | 201 + Location header + body; 409 on duplicate name; 422 on blank name; 422 on missing `enabled` |
+| `GET /flags` | 200 with flags array; 200 with empty array |
+| `GET /flags/{id}` | 200 with body; 404 ProblemDetail |
+| `PATCH /flags/{id}` | 200 with updated body; 404 ProblemDetail; 409 on duplicate name |
+| `DELETE /flags/{id}` | 204 and verifies service call; 404 ProblemDetail |
+| `GET /flags/{name}/evaluate` | 200 with name + enabled; 404 ProblemDetail with name in detail |
+
+### Mockito agent configuration
+
+Java 21 restricts dynamic agent loading, causing Mockito to emit a self-attaching warning during tests when it loads ByteBuddy without an explicit `-javaagent` flag. The `pom.xml` resolves this cleanly:
+
+1. `maven-dependency-plugin:properties` goal runs before `test` and sets `${org.mockito:mockito-core:jar}` to the absolute path of the resolved Mockito JAR.
+2. `maven-surefire-plugin` is configured with `argLine = @{argLine} -javaagent:${org.mockito:mockito-core:jar}`, attaching Mockito as a proper JVM agent for every test JVM.
+
+The `@{argLine}` late-binding placeholder (rather than `${argLine}`) preserves any `argLine` value set by other plugins (e.g. JaCoCo for code coverage) so they can coexist without overwriting each other. Because no such plugin is currently configured, `argLine` is declared as an empty property in `<properties>` — without this default, `@{argLine}` resolves to the literal string `{argLine}`, which the JVM misreads as a `@file` argument and crashes immediately.
