@@ -1,5 +1,7 @@
 # Feature Flag Service
 
+[![CI](https://github.com/Filip-Ermenkov/Feature-Flag-Service/actions/workflows/ci.yml/badge.svg)](https://github.com/Filip-Ermenkov/Feature-Flag-Service/actions/workflows/ci.yml)
+
 A REST API for managing application feature flags, built with Spring Boot 4.0.7 and Java 21.
 
 ## Requirements
@@ -116,7 +118,7 @@ curl -s -o /dev/null -w "%{http_code}" -X DELETE http://localhost:8080/flags/1
 - [x] Service layer (`FeatureFlagService` interface + `FeatureFlagServiceImpl`) with `@Transactional(readOnly=true)` class-level default, write-method overrides, and full Mockito unit test coverage (15 tests across create/findAll/findById/update/delete/evaluate)
 - [x] REST controller (`FeatureFlagController`) — all 6 endpoints with `@WebMvcTest` slice tests using Spring Framework 7's `MockMvcTester` (AssertJ-based); Mockito self-attaching agent configured in `maven-surefire-plugin`
 - [x] Dockerfile — multi-stage (JDK builder + JRE runtime), Spring Boot `jarmode=tools` layer extraction, non-root user, `VOLUME` for H2 persistence, container-aware JVM flags
-- [ ] GitHub Actions CI
+- [x] GitHub Actions CI — triggers on push/PR to `main`; Temurin JDK 21 with Maven cache; `mvn verify`; Surefire report artifact on failure; least-privilege `contents: read` + concurrency cancellation
 
 ## Future Improvements
 
