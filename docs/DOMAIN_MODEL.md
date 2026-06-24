@@ -56,3 +56,55 @@ This pattern is safe under Hibernate proxying because the `instanceof` operator 
 - Unique constraint enforcement (duplicate name → `DataIntegrityViolationException`)
 - `findAll` and `deleteById`
 - `equals` / `hashCode` contract for persisted and transient instances
+
+---
+
+## DTOs (`com.example.featureflags.dto`)
+
+All DTOs are Java records — immutable, with compiler-generated constructor, getters, `equals`, `hashCode`, and `toString`. Bean Validation annotations are null-safe unless stated otherwise.
+
+| Record | Used by | Fields | Validation |
+|---|---|---|---|
+| `CreateFlagRequest` | `POST /flags` | `name`, `description`, `enabled` | `name`: `@NotBlank @Size(max=255)`; `enabled`: `@NotNull` |
+| `UpdateFlagRequest` | `PATCH /flags/{id}` | `name`, `description`, `enabled` | `name`: `@Size(min=1, max=255)` (null-safe — null means "leave unchanged") |
+| `FlagResponse` | all read endpoints | `id`, `name`, `description`, `enabled`, `createdAt`, `updatedAt` | none; includes static factory `FlagResponse.from(FeatureFlag)` |
+| `EvaluateResponse` | `GET /flags/{name}/evaluate` | `name`, `enabled` | none |
+
+`Instant` fields (`createdAt`, `updatedAt`) are serialised as ISO-8601 strings by Jackson 3's `JavaTimeModule` (e.g. `"2026-06-24T10:00:00Z"`).
+
+---
+
+## Domain exceptions (`com.example.featureflags.exception`)
+
+| Exception | Thrown when | HTTP status |
+|---|---|---|
+| `FlagNotFoundException(Long id)` | lookup by ID finds nothing | 404 |
+| `FlagNotFoundException(String name)` | lookup by name finds nothing (evaluate endpoint) | 404 |
+| `DuplicateFlagNameException(String name)` | create/update would produce a duplicate name | 409 |
+
+### GlobalExceptionHandler
+
+`@RestControllerAdvice` extending Spring's `ResponseEntityExceptionHandler`. Maps every exception to an RFC 9457 `ProblemDetail` body:
+
+```json
+{
+  "type":      "urn:problem-type:feature-flag-not-found",
+  "title":     "Feature Flag Not Found",
+  "status":    404,
+  "detail":    "Feature flag not found with id: 42",
+  "timestamp": "2026-06-24T10:00:00Z"
+}
+```
+
+Bean Validation failures (`@Valid` on a request body) are mapped to `422 Unprocessable Entity` with a per-field `errors` array. All other Spring MVC exceptions (missing parameter, type mismatch, etc.) are handled by the parent class and also return `ProblemDetail`.
+
+### Test coverage
+
+`GlobalExceptionHandlerTest` is a `@WebMvcTest` slice with an embedded stub `@RestController`. It covers:
+
+- `FlagNotFoundException` by ID → 404 with correct `type`, `title`, `detail`
+- `FlagNotFoundException` by name → 404 with name in `detail`
+- `DuplicateFlagNameException` → 409 with correct `type`, `title`
+- Missing required field (`name`) → 422 with `errors[0].field = "name"`
+- Blank `name` field → 422
+- Missing `enabled` field → 422 with entry for `enabled` in `errors`

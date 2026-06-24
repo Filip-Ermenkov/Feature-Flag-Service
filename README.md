@@ -43,7 +43,7 @@ java -jar target/feature-flag-service-0.0.1-SNAPSHOT.jar
 
 **Virtual threads** — enabled via a single configuration flag; zero application code changes required. Effective only on Java 21+.
 
-**Error responses** — all error responses use `ProblemDetail` (RFC 7807), built into Spring Framework 7, making them machine-readable (`type`, `title`, `status`, `detail`).
+**Error responses** — all error responses use `ProblemDetail` (RFC 9457), built into Spring Framework 7, making them machine-readable (`type`, `title`, `status`, `detail`, `timestamp`).
 
 ## API Reference
 
@@ -70,7 +70,7 @@ Once running, the full interactive API reference is available at:
 - [x] SpringDoc OpenAPI configured
 - [x] Application context smoke test passes
 - [x] Domain model (`FeatureFlag` entity + `FeatureFlagRepository` with `@DataJpaTest` slice tests)
-- [ ] DTOs and domain exceptions
+- [x] DTOs (Java records: `CreateFlagRequest`, `UpdateFlagRequest`, `FlagResponse`, `EvaluateResponse`) and domain exceptions (`FlagNotFoundException`, `DuplicateFlagNameException`) with RFC 9457 `ProblemDetail` error responses via `GlobalExceptionHandler` (`@WebMvcTest` slice tests)
 - [ ] Service layer
 - [ ] REST controller (all 6 endpoints)
 - [ ] Automated tests (service unit tests + `@WebMvcTest` slice tests)

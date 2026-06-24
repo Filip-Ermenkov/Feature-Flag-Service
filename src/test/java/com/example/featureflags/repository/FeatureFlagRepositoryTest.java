@@ -14,13 +14,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * JPA slice tests for {@link FeatureFlagRepository}.
- *
- * <p>Uses {@code @DataJpaTest} which boots only the JPA layer with an in-memory H2
- * database and wraps each test in a transaction that is rolled back after the test,
- * keeping tests independent.
- */
 @DataJpaTest
 class FeatureFlagRepositoryTest {
 
@@ -29,10 +22,6 @@ class FeatureFlagRepositoryTest {
 
     @Autowired
     private TestEntityManager em;
-
-    // -------------------------------------------------------------------------
-    // save / findById
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("persists a flag and assigns a generated ID")
@@ -49,7 +38,7 @@ class FeatureFlagRepositoryTest {
     void save_populatesAuditTimestamps() {
         FeatureFlag flag = new FeatureFlag("new-checkout", null, true);
         repository.save(flag);
-        em.flush(); // ensure Hibernate writes to DB and triggers @CreationTimestamp
+        em.flush();
 
         FeatureFlag loaded = em.find(FeatureFlag.class, flag.getId());
 
@@ -63,7 +52,7 @@ class FeatureFlagRepositoryTest {
         FeatureFlag flag = new FeatureFlag("beta-ui", "Beta UI rollout", false);
         repository.save(flag);
         em.flush();
-        em.clear(); // detach so next load is a fresh DB read
+        em.clear();
 
         FeatureFlag loaded = repository.findById(flag.getId()).orElseThrow();
         var originalCreatedAt = loaded.getCreatedAt();
@@ -76,10 +65,6 @@ class FeatureFlagRepositoryTest {
         FeatureFlag reloaded = repository.findById(flag.getId()).orElseThrow();
         assertThat(reloaded.getCreatedAt()).isEqualTo(originalCreatedAt);
     }
-
-    // -------------------------------------------------------------------------
-    // findByName
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("findByName returns the flag when name matches")
@@ -112,10 +97,6 @@ class FeatureFlagRepositoryTest {
         assertThat(repository.findByName("CasedFlag")).isPresent();
     }
 
-    // -------------------------------------------------------------------------
-    // existsByName
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("existsByName returns true when flag exists")
     void existsByName_returnsTrue_whenFlagExists() {
@@ -130,10 +111,6 @@ class FeatureFlagRepositoryTest {
         assertThat(repository.existsByName("ghost-flag")).isFalse();
     }
 
-    // -------------------------------------------------------------------------
-    // unique constraint
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("saving two flags with the same name throws DataIntegrityViolationException")
     void save_throwsOnDuplicateName() {
@@ -145,10 +122,6 @@ class FeatureFlagRepositoryTest {
             repository.saveAndFlush(duplicate);
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
-
-    // -------------------------------------------------------------------------
-    // findAll / deleteById
-    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("findAll returns all persisted flags")
@@ -175,10 +148,6 @@ class FeatureFlagRepositoryTest {
         assertThat(repository.findById(id)).isEmpty();
     }
 
-    // -------------------------------------------------------------------------
-    // equals / hashCode contract
-    // -------------------------------------------------------------------------
-
     @Test
     @DisplayName("two references to the same persisted flag are equal")
     void equals_twoRefsToSamePersistedFlag_areEqual() {
@@ -198,6 +167,6 @@ class FeatureFlagRepositoryTest {
         FeatureFlag b = new FeatureFlag("flag-2", null, false);
 
         assertThat(a).isNotEqualTo(b);
-        assertThat(a).isEqualTo(a); // reflexive
+        assertThat(a).isEqualTo(a);
     }
 }

@@ -4,12 +4,12 @@
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Framework | Spring Boot 3.4.x | Industry standard; auto-configures web, JPA, validation |
+| Framework | Spring Boot 4.0.7 (Spring Framework 7, Jakarta EE 11) | Industry standard; auto-configures web, JPA, validation |
 | Java version | 21 (LTS) | Required minimum; unlocks virtual threads with zero code changes |
 | Build | Maven | Wider familiarity; deterministic dependency resolution |
 | Persistence | Spring Data JPA + H2 (file mode) | File-based H2 survives restarts; JPA repository interface makes the storage layer trivially swappable |
-| API documentation | SpringDoc OpenAPI 2.x (Swagger UI) | Zero-boilerplate; can explore the API interactively without curl |
-| Tests | JUnit 5 + MockMvc (`@WebMvcTest` slice) | H2 in-memory for the test profile; full request-to-DB round-trip without spinning up a real server |
+| API documentation | SpringDoc OpenAPI 3.0.3 (Swagger UI) | Zero-boilerplate; can explore the API interactively without curl |
+| Tests | JUnit 6 + MockMvc (`@WebMvcTest` slice) | H2 in-memory for the test profile; full request-to-DB round-trip without spinning up a real server |
 | Containerisation | Dockerfile (multi-stage, JRE 21 slim base) | Stretch goal; minimal final image; demonstrates production awareness |
 | CI | GitHub Actions | Stretch goal; build + test on every push and pull request |
 
@@ -76,7 +76,7 @@ The `FeatureFlag` entity has: auto-generated `id`, `name` (unique, non-null), op
 | `DELETE` | `/flags/{id}` | 204 | 404 | |
 | `GET` | `/flags/{name}/evaluate` | 200 | 404 | lookup by name, not id |
 
-Error responses use Spring 6's `ProblemDetail` (RFC 7807) — `type`, `title`, `status`, `detail` fields — making errors machine-readable.
+Error responses use Spring Framework 7's `ProblemDetail` (RFC 9457) — `type`, `title`, `status`, `detail`, `timestamp` fields — making errors machine-readable.
 
 ---
 
