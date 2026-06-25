@@ -26,7 +26,7 @@ Both fields use `java.time.Instant`, which Hibernate maps to `TIMESTAMP(6) WITH 
 
 ### equals / hashCode
 
-The entity uses the ID-based equality pattern recommended by Vlad Mihalcea:
+The entity uses the ID-based equality pattern:
 
 - `equals` — two instances are equal if both have a non-null `id` and the IDs match. A transient (unsaved) instance is equal only to itself.
 - `hashCode` — returns `getClass().hashCode()` (a constant). This ensures that the same entity object remains stable in a `HashSet` or `HashMap` before and after it is first persisted (i.e. before and after its `id` is assigned by the database).
